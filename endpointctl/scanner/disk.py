@@ -1,5 +1,6 @@
 import psutil
 from rich.console import Console 
+from endpointctl.reporting.logger import logger
 
 console = Console()
 
@@ -15,3 +16,5 @@ def check_disk():
         "disk_usage": percent,
         "status": status
     }
+
+logger.info("Disk scan completed")

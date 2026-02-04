@@ -1,6 +1,7 @@
 import platform
 import socket
 from rich.console import Console
+from endpointctl.reporting.logger import logger
 
 console = Console()
 
@@ -17,3 +18,4 @@ def scan_os():
     for k, v in info.items():
         console.print(f"[green]{k}:[/green] {v}")
 
+logger.info("OS Information Retrieved")
