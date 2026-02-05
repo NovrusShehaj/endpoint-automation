@@ -1,22 +1,24 @@
 import platform
 import subprocess
+from endpointctl.remediation.base import require_admin, confirm_action
 
-def check_encryption():
+def enable_encryption():
+    require_admin()
+    confirm_action("This will enable full disk encryption")
+
     os_name = platform.system()
 
     if os_name == "Windows":
-        cmd = ["manage-bde", "-status"]
+        cmd = ["manage-bde", "-on", "c:"]
     elif os_name == "Darwin":
-        cmd = ["fdesetup", "status"]
+        cmd = ["fdesetup", "enable"]
     else:
-        return {"encryption": "unsupported"}
+        raise RunTimeError("Encryption not supported on this OS")
 
-    return = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     return {
-        "encryption_output": result.stdout.strip()
+        "action": "enable_encryption",
+        "stdout": result.stdout,
+        "stderr": result.stderr
     }

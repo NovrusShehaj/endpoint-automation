@@ -5,6 +5,9 @@ from endpointctl.scanner.os_info import scan_os
 from endpointctl.scanner.encryption import check_encryption
 from endpointctl.scanner.security import check_security
 from endpointctl.scanner.disk import check_disk
+from endpointctl.remediation.disk import cleanup_temp
+from endpointctl.remediation.encryption import enable_encryption
+
 
 console = Console()
 
@@ -23,12 +26,20 @@ def run():
         help="Which scan to run"
     )
 
+    remediate_parser = subparsers.add_parser("remediate", help="Run remediation")
+    remediate_parser.add_argument(
+        "target",
+        choices=["disk", "encryption"],
+        help="Remediation action"
+    )
+
     args = parser.parse_args()
 
     if args.command == "scan":
         if args.target == "disk":
             console.rule("[bold blue]Disk Scan")
             console.print(check_disk())
+
         elif args.target == "encryption":
             console.rule("[bold blue]Encryption Scan")
             console.print(check_encryption())
@@ -48,3 +59,12 @@ def run():
 
             console.rule("[bold blue]Security Baseline")
             console.print(check_security())
+
+    elif args.command == "remediate":
+        if args.target == "disk":
+            console.rule("[bold red]Disk Remediation")
+            console.print(cleanup_temp())
+
+        elif args.target == "encryption":
+            console.rule("[bold red]Encryption Remediation")
+            console.print(enable_encryption())
