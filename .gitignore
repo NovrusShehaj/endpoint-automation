@@ -1,0 +1,35 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Local caches (repository-local by convention in this project)
+.pip-cache/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tmp/
+
+# Runtime logs and audit trails (never commit endpoint data)
+logs/
+*.log
+
+# Local configuration and secrets
+endpointctl.local.toml
+.env
+.env.*

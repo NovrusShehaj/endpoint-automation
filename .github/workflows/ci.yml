@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "dev/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI must never be able to reach an apply path, even by accident.
+  ENDPOINTCTL_ENABLE_REMEDIATION: ""
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  lint:
+    name: lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - name: ruff check
+        run: python -m ruff check .
+      - name: ruff format
+        run: python -m ruff format --check .
+      - name: mypy
+        run: python -m mypy
+
+  test:
+    name: tests (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        include:
+          # Windows and macOS run the same fixture-based suite; no real
+          # manage-bde or fdesetup call is ever made.
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - name: pytest
+        run: python -m pytest --cov --cov-report=term-missing
+
+  package:
+    name: clean install and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: build a wheel
+        run: |
+          python -m pip install build
+          python -m build
+      - name: install the wheel into a clean environment
+        run: |
+          python -m venv /tmp/endpointctl-venv
+          /tmp/endpointctl-venv/bin/python -m pip install dist/*.whl
+      - name: console script works
+        run: |
+          /tmp/endpointctl-venv/bin/endpointctl --version
+          /tmp/endpointctl-venv/bin/python -c "import endpointctl; print(endpointctl.__version__)"
+      - name: json scan is machine readable
+        run: |
+          set +e
+          /tmp/endpointctl-venv/bin/endpointctl --json scan all > scan.json
+          code=$?
+          set -e
+          # 0 ok / 2 warning findings are both valid on a CI runner; 3+ is not.
+          test "$code" -eq 0 -o "$code" -eq 2
+          python -c "import json,sys; d=json.load(open('scan.json')); assert d['tool']=='endpointctl'; assert d['results']; print(d['status'])"
+      - name: bare invocation prints help and fails
+        run: |
+          set +e
+          /tmp/endpointctl-venv/bin/endpointctl > help.txt 2>&1
+          code=$?
+          set -e
+          test "$code" -eq 1
+          grep -q "usage: endpointctl" help.txt
+      - name: remediation is not reachable by default
+        run: |
+          set +e
+          /tmp/endpointctl-venv/bin/endpointctl remediate disk > remediate.txt 2>&1
+          code=$?
+          set -e
+          test "$code" -eq 1
+          grep -q "invalid choice" remediate.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

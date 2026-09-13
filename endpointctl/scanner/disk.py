@@ -1,20 +1,71 @@
+"""Disk-capacity check for the configured volumes.
+
+Defaults are OS-correct (``/`` on POSIX, ``C:\\`` on Windows) and the warning
+threshold comes from configuration, not from a literal in this function.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
 import psutil
-from rich.console import Console 
-from endpointctl.reporting.logger import logger
 
-console = Console()
+from endpointctl.config import Config, default_config
+from endpointctl.models import ScanResult, Status
 
-def check_disk():
-    usage = psutil.disk_usage("/")
-    percent = usage.percent
+__all__ = ["check_disk"]
 
-    status = "OK" if percent < 85 else "WARNING"
 
-    console.print(f"Disk Usage: {percent}% [{status}]")
+def check_disk(config: Config | None = None) -> ScanResult:
+    """Report usage per configured path; ``WARNING`` at or above the threshold."""
+    config = config or default_config()
+    threshold = config.disk.warning_threshold
 
-    return {
-        "disk_usage": percent,
-        "status": status
-    }
+    volumes: list[dict[str, Any]] = []
+    statuses: list[Status] = []
+    errors: list[str] = []
 
-logger.info("Disk scan completed")
+    for path in config.disk.paths:
+        try:
+            usage = psutil.disk_usage(path)
+        except (OSError, psutil.Error) as exc:
+            statuses.append(Status.ERROR)
+            errors.append(f"{path}: {exc}")
+            volumes.append({"mountpoint": path, "status": Status.ERROR.value, "error": str(exc)})
+            continue
+
+        status = Status.WARNING if usage.percent >= threshold else Status.OK
+        statuses.append(status)
+        volumes.append(
+            {
+                "mountpoint": path,
+                "percent_used": round(usage.percent, 1),
+                "total_bytes": usage.total,
+                "used_bytes": usage.used,
+                "free_bytes": usage.free,
+                "warning_threshold_percent": threshold,
+                "status": status.value,
+            }
+        )
+
+    aggregate = max(statuses, key=lambda s: s.severity) if statuses else Status.ERROR
+    return ScanResult(
+        name="disk_usage",
+        status=aggregate,
+        message=_message(volumes, threshold),
+        data={"warning_threshold_percent": threshold, "volumes": volumes},
+        error="; ".join(errors) or None,
+    )
+
+
+def _message(volumes: list[dict[str, Any]], threshold: int) -> str:
+    if not volumes:
+        return "no volumes were inspected"
+    parts = []
+    for volume in volumes:
+        percent = volume.get("percent_used")
+        if percent is None:
+            parts.append(f"{volume['mountpoint']}: unavailable")
+        else:
+            parts.append(f"{volume['mountpoint']}: {percent}% used")
+    return f"threshold {threshold}% - " + ", ".join(parts)

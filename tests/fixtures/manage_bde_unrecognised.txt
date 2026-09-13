@@ -1,0 +1,5 @@
+BitLocker Drive Encryption: Configuration Tool version 10.0.19041
+Copyright (C) 2013 Microsoft Corporation. All rights reserved.
+
+ERROR: An error occurred (code 0x80070005):
+Access is denied.

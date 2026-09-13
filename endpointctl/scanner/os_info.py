@@ -1,21 +1,31 @@
+"""Host and operating-system metadata. Read-only, no OS tools, no printing."""
+
+from __future__ import annotations
+
 import platform
 import socket
-from rich.console import Console
-from endpointctl.reporting.logger import logger
+import sys
 
-console = Console()
+from endpointctl.config import Config
+from endpointctl.models import ScanResult, Status
 
-def scan_os():
-    console.rule("[bold blue]Endpoint OS Information")
+__all__ = ["check_os"]
 
-    info = {
+
+def check_os(config: Config | None = None) -> ScanResult:
+    """Collect host identity. Always ``INFO``: there is nothing to fail."""
+    data = {
         "hostname": socket.gethostname(),
         "os": platform.system(),
+        "os_release": platform.release(),
         "os_version": platform.version(),
-        "architecture": platform.machine()
+        "architecture": platform.machine(),
+        "python_version": platform.python_version(),
+        "python_executable": sys.executable,
     }
-
-    for k, v in info.items():
-        console.print(f"[green]{k}:[/green] {v}")
-
-logger.info("OS Information Retrieved")
+    return ScanResult(
+        name="os_info",
+        status=Status.INFO,
+        message=f"{data['os']} {data['os_release']} on {data['hostname']}",
+        data=data,
+    )

@@ -1,0 +1,31 @@
+# Example endpointctl configuration.
+#
+# Copy to one of the locations documented in docs/configuration.md, for example
+# ~/.config/endpointctl/endpointctl.toml, and delete the sections you do not
+# need - every setting has a safe default.
+
+[disk]
+# Absolute paths only. Default: ["/"] on POSIX, ["C:\\"] on Windows.
+paths = ["/"]
+# Usage at or above this percentage is reported as WARNING (1-99).
+warning_threshold = 85
+
+[encryption]
+# BitLocker volumes to query with `manage-bde -status`. Ignored off Windows.
+windows_volumes = ["C:"]
+
+[security]
+# Exact, normalised process names (lower-case, ".exe" stripped) that count as
+# endpoint protection. Pin this per OS image rather than relying on the
+# built-in list.
+protection_processes = ["msmpeng", "csfalconservice", "falcond", "clamd"]
+
+[process]
+# Hard timeout applied to every OS-tool invocation.
+timeout_seconds = 30
+
+[logging]
+# Defaults to the per-user state directory; set an absolute path to override.
+# file = "/var/log/endpointctl/endpoint.log"
+max_bytes = 5242880
+backup_count = 3

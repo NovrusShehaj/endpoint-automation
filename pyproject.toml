@@ -1,0 +1,113 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endpointctl"
+dynamic = ["version"]
+description = "Scan-only endpoint health and security posture CLI"
+readme = "README.md"
+# 3.11 is the floor because the config layer uses stdlib tomllib. The upper
+# bound keeps psutil/rich compatibility claims honest until a new major
+# Python is tested in CI.
+requires-python = ">=3.11,<3.15"
+authors = [{ name = "Novrus Shehaj" }]
+keywords = ["endpoint", "security", "compliance", "cli", "sysadmin"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: System Administrators",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Systems Administration",
+]
+# Lower bounds are the oldest releases that support Python 3.11 and the APIs
+# used here (psutil.disk_usage/process_iter, rich Console/Table/rule). Upper
+# bounds stop an untested major from being pulled onto endpoints; exact
+# versions for reproducible installs live in uv.lock.
+dependencies = [
+  "psutil>=5.9.0,<8.0.0",
+  "rich>=13.7.0,<15.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "mypy>=1.11",
+]
+
+[project.scripts]
+endpointctl = "endpointctl.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/NovrusShehaj/endpoint-automation"
+Issues = "https://github.com/NovrusShehaj/endpoint-automation/issues"
+
+[tool.hatch.version]
+path = "endpointctl/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["endpointctl"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "endpointctl",
+  "tests",
+  "docs",
+  "main.py",
+  "README.md",
+  "CHANGELOG.md",
+  "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "S", "BLE", "SLF"]
+ignore = [
+  # Asserts are the point of the test suite; S101 is re-enabled outside tests.
+  "S101",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The process helper is the single sanctioned subprocess call site.
+"endpointctl/process.py" = ["S404", "S603"]
+"tests/*" = ["S101", "S108", "S404", "S603"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["endpointctl"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["psutil.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["endpointctl"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
